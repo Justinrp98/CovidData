@@ -1,0 +1,107 @@
+SELECT *
+FROM capstone-project-covid.covid_data.covid_deaths
+ORDER BY 3,4
+
+-- SELECT *
+-- FROM capstone-project-covid.covid_data.covid_vaccinations
+-- ORDER BY 3,4
+
+-- Select data we will be using
+SELECT location, date, total_cases, new_cases, total_deaths, population
+FROM capstone-project-covid.covid_data.covid_deaths
+ORDER BY 1,2
+
+-- Looking at total cases vs total deaths
+-- Shows percentage of deaths against total cases if you contract COVID in your country (i.e. 2% of people with COVID have died)
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 AS death_percent
+FROM capstone-project-covid.covid_data.covid_deaths
+WHERE location like '%States%'
+ORDER BY 1,2
+
+-- Looking at total cases vs population
+-- Shows what percentage of the population has contracted COVID
+SELECT location, date, total_cases, population, (total_cases/population)*100 AS cases_percent
+FROM capstone-project-covid.covid_data.covid_deaths
+-- WHERE location like '%States%'
+ORDER BY 1,2
+
+-- Looking at countries with highest infection rate compared to their population
+SELECT location, population, MAX(total_cases) AS highest_infection_count, MAX((total_cases/population))*100 AS cases_population
+FROM capstone-project-covid.covid_data.covid_deaths
+-- WHERE location like '%States%'
+GROUP BY location, population
+ORDER BY cases_percent DESC
+
+-- Showing countries with highest death count against population
+SELECT location, MAX((total_deaths)) AS total_death_count
+FROM capstone-project-covid.covid_data.covid_deaths
+WHERE continent IS NOT null
+GROUP BY location
+ORDER BY total_death_count DESC
+
+-- Showing continents with the highest death count
+SELECT location, MAX((total_deaths)) AS total_death_count
+FROM capstone-project-covid.covid_data.covid_deaths
+WHERE continent IS NOT null
+GROUP BY location
+ORDER BY total_death_count DESC
+
+-- Global Numbers
+SELECT 
+  date, 
+  SUM(new_cases) AS total_cases, 
+  SUM(cast(new_deaths AS int)) AS total_deaths, 
+  SUM(cast(new_deaths as int))/SUM(new_cases)*100 AS death_percentage
+FROM 
+  capstone-project-covid.covid_data.covid_deaths
+WHERE 
+  continent IS NOT null
+GROUP BY 
+  date
+ORDER BY 
+  1,2
+
+  -- Death percentage for the world as a whole (~ 2.11%)
+SELECT 
+  SUM(new_cases) AS total_cases, 
+  SUM(cast(new_deaths AS int)) AS total_deaths, 
+  SUM(cast(new_deaths as int))/SUM(new_cases)*100 AS death_percentage
+FROM 
+  capstone-project-covid.covid_data.covid_deaths
+WHERE 
+  continent IS NOT null
+ORDER BY 
+  1,2
+
+-- Looking at total population vs vaccinations
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(cast(vac.new_vaccinations AS int)) OVER (Partition by dea.location ORDER BY dea.location, dea.date) AS ttd_vaccinations
+FROM capstone-project-covid.covid_data.covid_deaths dea
+JOIN capstone-project-covid.covid_data.covid_vaccinations vac
+  ON dea.location = vac.location
+  AND dea.date = vac.date
+WHERE dea.continent IS NOT null
+ORDER BY 2,3
+
+-- TEMP TABLE
+DROP Table if exists #PercentPopulationVaccinated
+CREATE TABLE #PercentPopulationVaccinated 
+(
+  Continent nvarchar(255), 
+  Location nvarchar(255), 
+  Date datetime, 
+  Population numeric, 
+  New_Vaccinations numeric, 
+  ttd_vaccinations numeric
+  )
+
+INSERT INTO #PercentPopulationVaccinated 
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations, SUM(cast(vac.new_vaccinations AS int)) OVER (Partition by dea.location ORDER BY dea.location, dea.date) AS ttd_vaccinations
+FROM capstone-project-covid.covid_data.covid_deaths dea
+JOIN capstone-project-covid.covid_data.covid_vaccinations vac
+  ON dea.location = vac.location
+  AND dea.date = vac.date
+WHERE dea.continent IS NOT null
+ORDER BY 2,3
+
+SELECT *, (ttd_vaccinations/population)*100
+FROM #PercentPopulationVaccinated
