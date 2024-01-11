@@ -1,10 +1,7 @@
+-- View Full Table
 SELECT *
 FROM capstone-project-covid.covid_data.covid_deaths
 ORDER BY 3,4
-
--- SELECT *
--- FROM capstone-project-covid.covid_data.covid_vaccinations
--- ORDER BY 3,4
 
 -- Select data we will be using
 SELECT location, date, total_cases, new_cases, total_deaths, population
